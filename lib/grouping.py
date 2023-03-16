@@ -44,7 +44,7 @@ def grouping_photos(images, distance_th=None, time_th=3600): # time_th: second
     return groups
 
 def main():
-    KEY_PATH = '/Users/yutorse/travel_photos_python/.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
     cred = credentials.Certificate(KEY_PATH)
     firebase_admin.initialize_app(cred)
     db = firestore.client()
@@ -77,7 +77,7 @@ def main():
             "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FMiUuvWAwcPZSl8IWa3tpA?alt=media&token=de854312-1b16-4d4b-b900-7a3554e143e0"
         },
         {
-            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
+            "gps": { "latitude": 36.0276244, "longitude": 135.7837774 },
             "date": "2023-03-17T21:00:000Z",
             "id": "fuga",
             "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FgsVD6U0lT7EMM8crgSYi3?alt=media&token=f59a95dc-26b2-421e-a350-07d41d9ebf02"
