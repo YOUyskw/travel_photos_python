@@ -1,6 +1,8 @@
 from datetime import datetime
 import reverse_geocoding
 import numpy as np
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 def grouping_photos(images, distance_th=None, time_th=3600): # time_th: second
     dates = []
@@ -41,7 +43,14 @@ def grouping_photos(images, distance_th=None, time_th=3600): # time_th: second
 
     return groups
 
-if __name__ == '__main__':
+def main():
+    KEY_PATH = '/Users/yutorse/travel_photos_python/.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    cred = credentials.Certificate(KEY_PATH)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+
+    group_name = "test1"
+
     images = [
         {
             "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
@@ -75,3 +84,14 @@ if __name__ == '__main__':
         }
     ]
     groups = grouping_photos(images)
+
+    for i in range(len(images)):
+        db.collection("groups_test").document(f"{group_name}").collection("all_photos").document(f"{i}").set(images[i])
+
+    for i in range(len(groups)):
+        for j in range(len(groups[i])):
+            db.collection("groups_test").document(f"{group_name}").collection("grouping_photos").document(f"{i}").collection(f"{i}").document(f"{j}").set(groups[i][j])
+
+
+if __name__ == '__main__':
+    main()
