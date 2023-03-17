@@ -14,8 +14,11 @@ def grouping_photos(photos, distance_th=None, time_th=3600): # time_th: second
         date_jst = date_utc + timedelta(hours=9)
         dates.append(date_jst)
         latitude, longitude = photo["location"]["latitude"], photo["location"]["longitude"]
-        location_name = reverse_geocoding.get_location(latitude, longitude)
-        photo["location_name"] = location_name
+        try:
+            location_name = reverse_geocoding.get_location(latitude, longitude)
+            photo["location_name"] = location_name
+        except:
+            photo["location_name"] = "位置不明"
     # -----------------------
 
     # 時系列ソート処理 ----------
