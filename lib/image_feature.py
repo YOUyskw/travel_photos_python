@@ -4,6 +4,9 @@ from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 import numpy as np
 from PIL import Image
 import io, urllib.request
+import firebase_admin
+from firebase_admin import credentials, firestore
+from datetime import datetime, timedelta
 
 torch.manual_seed(0)
 model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT, progress=True)
@@ -42,72 +45,75 @@ def are_images_similar(image1, image2, threshold, model):
     return similarity >= threshold
 
 def wrap_images(images, similarity_th=0.9):
-    '''
-    Parameters: images
-    [
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "hogehogehoge",
-            "url": "https://firestore.example.com/dsadsadas"
-        },
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "hogehogehoge",
-            "url": "https://firestore.example.com/dsadsadas"
-        },
-    ]
-    '''
     images_data = []
+    dates = []
     for image in images:
+        date_utc = datetime.fromisoformat(image["createdAt"].isoformat())
+        date_jst = date_utc + timedelta(hours=9)
+        dates.append(date_jst)
+    sort_index = np.argsort(dates)
+    images_sorted = [images[i] for i in sort_index]
+
+    for image in images_sorted:
         try:
-            img = urllib.request.urlopen(image["url"]).read()
+            img = urllib.request.urlopen(image["downloadUrl"]).read()
             bin_img = io.BytesIO(img)
         except Exception as e:
             print(e)
         images_data.append(Image.open(bin_img))
 
     wrapped_images = []
+    wrapped_urls = set()
 
-    for i in range(len(images)):
+    for i in range(len(images_sorted)):
         if i == 0:
-            wrapped_images.append(images[i])
+            wrapped_images.append(images_sorted[i])
+            wrapped_urls.add(images_sorted[i]["downloadUrl"])
         else:
             if not(are_images_similar(images_data[i-1], images_data[i], similarity_th, model)):
-                wrapped_images.append(images[i])
-    return wrapped_images
+                wrapped_images.append(images_sorted[i])
+                wrapped_urls.add(images_sorted[i]["downloadUrl"])
+    return wrapped_images, wrapped_urls
+
+def main(group_id="2"):
+    # Firestore への接続 -----------------
+    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    cred = credentials.Certificate(KEY_PATH)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    # -----------------------------------
+
+    # 写真の読み出し -----------------------
+    photos_firestore = db.collection("group").document(f"{group_id}").collection("photo").get()
+    photos = []
+    photo_id_dict = {}
+    urls = set()
+    for photo in photos_firestore:
+        url = photo.to_dict()["downloadUrl"]
+        urls.add(url)
+        photo_id_dict[f"{url}"] = photo.id
+        photos.append(photo.to_dict())
+
+    # 類似している写真を1つにまとめる
+    wrapped_photos, wrapped_urls = wrap_images(photos)
+
+    # 写真の削除 -------------------------
+    delete_urls = urls - wrapped_urls
+    for delete_url in delete_urls:
+        delete_photo_id = photo_id_dict[f"{delete_url}"]
+        db.collection("group").document(f"{group_id}").collection("photo").document(f"{delete_photo_id}").delete()
+
+    # 写真の書き込み -----------------------
+    for photo in wrapped_photos:
+        url = photo["downloadUrl"]
+        photo_id = photo_id_dict[f"{url}"]
+        db.collection("group").document(f"{group_id}").collection("photo").document(f"{photo_id}").set(photo)
+    # ------------------------------------
+
 
 if __name__ == "__main__":
-    '''
-    images = [
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "hogehogehoge",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
-        },
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
-        },
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FMiUuvWAwcPZSl8IWa3tpA?alt=media&token=de854312-1b16-4d4b-b900-7a3554e143e0"
-        },
-        {
-            "gps": { "latitude": 34.00, "longitude": 135.00 },
-            "date": "2023-03-15T00:00:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FgsVD6U0lT7EMM8crgSYi3?alt=media&token=f59a95dc-26b2-421e-a350-07d41d9ebf02"
-        }
-    ]
-    '''
-    wrapped_images = wrap_images(images)
+    main()
+
 
 
 
