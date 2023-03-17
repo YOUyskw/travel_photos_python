@@ -1,70 +1,77 @@
 from datetime import datetime
-import get_exif, reverse_geocoding, image_feature
+import reverse_geocoding
 import numpy as np
-from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
-model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT, progress=True)
-model.eval()
-
-def grouping_photos(image_paths, distance_th=None, time_th=3600, similarity_th=0.9): # time_th: second
-    date_format = "%Y:%m:%d %H:%M:%S"
+def grouping_photos(images, distance_th=None, time_th=3600): # time_th: second
     dates = []
-    date_groups = []
+    groups = []
 
-    gps_dict = {}
-
-    # 入力写真のExif情報をなめる ----
-    for image_path in image_paths:
-        image = get_exif.ExifImage(image_path)
-        date_str = image.get_date()
-        datetime_object = datetime.strptime(date_str, date_format)
-        dates.append(datetime_object)
-        gps_str = image.get_gps().split(",")
-        gps_dict[image_path] = [gps_str[0], gps_str[1]]
-    # --------------------------
+    # データの前処理 -----------
+    for image in images:
+        date_str = image["date"]
+        date_str = date_str.replace('Z', '+09:00')
+        date = datetime.fromisoformat(date_str)
+        dates.append(date)
+        latitude, longitude = image["gps"]["latitude"], image["gps"]["longitude"]
+        location = reverse_geocoding.get_location(latitude, longitude)
+        image["location"] = location
+    # -----------------------
 
     # 時系列ソート処理 ----------
     sort_index = np.argsort(dates)
     dates_sorted = [dates[i] for i in sort_index]
-    image_paths_sorted = [image_paths[i] for i in sort_index]
+    images_sorted = [images[i] for i in sort_index]
     # ------------------
 
-
-    # 類似度が高い写真を1つにまとめる
-    image_paths_wrapped = []
-    for i in range(len(image_paths_sorted)):
+    # 時系列 & 場所 のグルーピング
+    group = []
+    for i in range(len(images_sorted)):
         if i == 0:
-            image_paths_wrapped.append(image_paths_sorted[i])
-        else:
-            print(image_feature.get_image_similarity(image_paths_sorted[i-1], image_paths_sorted[i], model))
-            if not(image_feature.are_images_similar(image_paths_sorted[i-1], image_paths_sorted[i], similarity_th, model)):
-                image_paths_wrapped.append(image_paths_sorted[i])
-
-
-    # 時系列のグルーピング
-    date_group = []
-    for i in range(len(image_paths_sorted)):
-        if i == 0:
-            date_group.append(image_paths_sorted[i])
+            group.append(images_sorted[i])
         else:
             time_diff = (dates_sorted[i] - dates_sorted[i-1]).total_seconds()
-            if time_diff <= time_th:
-                date_group.append(image_paths_sorted[i])
+            if time_diff <= time_th and images_sorted[i-1]["location"] == images_sorted[i]["location"]:
+                group.append(images_sorted[i])
             else:
-                date_groups.append(date_group)
-                date_group = []
-                date_group.append(image_paths_sorted[i])
-    if date_group != []:
-        date_groups.append(date_group)
+                groups.append(group)
+                group = []
+                group.append(images_sorted[i])
+    if group != []:
+        groups.append(group)
 
-    # 写真が撮られた場所を求める
-    locations = []
-    for date_group in date_groups:
-        latitude, longitude = gps_dict[date_group[0]][0], gps_dict[date_group[0]][1]
-        location = reverse_geocoding.get_location(latitude, longitude)
-        locations.append(location)
+    return groups
 
-    # 場所のグルーピング
-    # TODO
-
-# grouping_photos(["hoge.JPG", "fuga.JPG", "piyo.JPG"])
+if __name__ == '__main__':
+    images = [
+        {
+            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
+            "date": "2023-03-15T02:00:000Z",
+            "id": "hogehogehoge",
+            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
+        },
+        {
+            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
+            "date": "2023-03-15T01:10:000Z",
+            "id": "fuga",
+            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
+        },
+        {
+            "gps": { "latitude": 35.0276244, "longitude": 134.7837774 },
+            "date": "2023-03-15T02:15:000Z",
+            "id": "fuga",
+            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
+        },
+        {
+            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
+            "date": "2023-03-16T00:00:000Z",
+            "id": "fuga",
+            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FMiUuvWAwcPZSl8IWa3tpA?alt=media&token=de854312-1b16-4d4b-b900-7a3554e143e0"
+        },
+        {
+            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
+            "date": "2023-03-17T21:00:000Z",
+            "id": "fuga",
+            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FgsVD6U0lT7EMM8crgSYi3?alt=media&token=f59a95dc-26b2-421e-a350-07d41d9ebf02"
+        }
+    ]
+    groups = grouping_photos(images)
