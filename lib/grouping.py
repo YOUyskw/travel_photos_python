@@ -43,55 +43,33 @@ def grouping_photos(images, distance_th=None, time_th=3600): # time_th: second
 
     return groups
 
-def main():
+def main(group_id="test1"):
+    # Firestore への接続 -----------------
     KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
     cred = credentials.Certificate(KEY_PATH)
     firebase_admin.initialize_app(cred)
     db = firestore.client()
+    # -----------------------------------
 
-    group_name = "test1"
+    # 写真の読み出し -----------------------
+    photos_firestore = db.collection("group").document(f"{group_id}").collection("photo").get()
+    photos = []
+    for photo in photos_firestore:
+        photos.append(photo.to_dict())
+    # -----------------------------------
 
-    images = [
-        {
-            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
-            "date": "2023-03-15T02:00:000Z",
-            "id": "hogehogehoge",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
-        },
-        {
-            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
-            "date": "2023-03-15T01:10:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
-        },
-        {
-            "gps": { "latitude": 35.0276244, "longitude": 134.7837774 },
-            "date": "2023-03-15T02:15:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2F95A9m-ckz9FICQYAJFvhw?alt=media&token=07281d1c-5e34-41b4-94b3-bb88915bed3b"
-        },
-        {
-            "gps": { "latitude": 35.0276244, "longitude": 135.7837774 },
-            "date": "2023-03-16T00:00:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FMiUuvWAwcPZSl8IWa3tpA?alt=media&token=de854312-1b16-4d4b-b900-7a3554e143e0"
-        },
-        {
-            "gps": { "latitude": 36.0276244, "longitude": 135.7837774 },
-            "date": "2023-03-17T21:00:000Z",
-            "id": "fuga",
-            "url": "https://firebasestorage.googleapis.com/v0/b/trip-timeline-28131.appspot.com/o/1%2FgsVD6U0lT7EMM8crgSYi3?alt=media&token=f59a95dc-26b2-421e-a350-07d41d9ebf02"
-        }
-    ]
-    groups = grouping_photos(images)
+    # 写真のグルーピング
+    groups = grouping_photos(photos)
 
-    for i in range(len(images)):
-        db.collection("groups_test").document(f"{group_name}").collection("all_photos").document(f"{i}").set(images[i])
+    # 写真の書き込み -----------------------
+    for i in range(len(photos)):
+        db.collection("group").document(f"{group_id}").collection("photo").document(f"{i}").set(photos[i])
 
     for i in range(len(groups)):
         for j in range(len(groups[i])):
-            db.collection("groups_test").document(f"{group_name}").collection("grouping_photos").document(f"{i}").collection(f"{i}").document(f"{j}").set(groups[i][j])
-
+            db.collection("group").document(f"{group_id}").collection("photo").document(f"{i}").collection(f"{i}").document(f"{j}").set(groups[i][j])
+    # ------------------------------------
 
 if __name__ == '__main__':
     main()
+    # main(group_id)
