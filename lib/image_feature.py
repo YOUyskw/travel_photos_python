@@ -85,6 +85,7 @@ def main(group_id="2"):
 
     # 写真の読み出し -----------------------
     photos_firestore = db.collection("group").document(f"{group_id}").collection("photo").get()
+    grouping_photos_firestore = db.collection("group").document(f"{group_id}").collection("grouping_photo").document("1").collection("1").get()
     photos = []
     photo_id_dict = {}
     urls = set()
@@ -99,9 +100,20 @@ def main(group_id="2"):
 
     # 写真の削除 -------------------------
     delete_urls = urls - wrapped_urls
+    delete_ids = {photo_id_dict[f"{delete_url}"] for delete_url in delete_urls}
     for delete_url in delete_urls:
         delete_photo_id = photo_id_dict[f"{delete_url}"]
         db.collection("group").document(f"{group_id}").collection("photo").document(f"{delete_photo_id}").delete()
+    album_id = 0
+    is_delete_not_finished = True
+    while(is_delete_not_finished):
+        grouping_photos_firestore = db.collection("group").document(f"{group_id}").collection("grouping_photo").document(f"{album_id}").collection(f"{album_id}").get()
+        for photo in grouping_photos_firestore:
+            id = photo.id
+            if id in delete_ids:
+                db.collection("group").document(f"{group_id}").collection("grouping_photo").document(f"{album_id}").collection(f"{album_id}").document(f"{id}").delete()
+        if grouping_photos_firestore == []: is_delete_not_finished = False
+        album_id += 1
 
     # 写真の書き込み -----------------------
     for photo in wrapped_photos:
