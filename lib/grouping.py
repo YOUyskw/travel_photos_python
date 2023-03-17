@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import reverse_geocoding
+import lib.reverse_geocoding as reverse_geocoding
 import numpy as np
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -42,7 +42,7 @@ def grouping_photos(photos, distance_th=None, time_th=3600): # time_th: second
 
     return groups
 
-def main(group_id="2"):
+def grouping_image(group_id="2"):
     # Firestore への接続 -----------------
     KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
     cred = credentials.Certificate(KEY_PATH)
