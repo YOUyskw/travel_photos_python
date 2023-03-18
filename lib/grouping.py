@@ -45,13 +45,13 @@ def grouping_photos(photos, distance_th=None, time_th=3600): # time_th: second
 
     return groups
 
-def grouping_image(group_id="2"):
-    # Firestore への接続 -----------------
-    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
-    cred = credentials.Certificate(KEY_PATH)
-    firebase_admin.initialize_app(cred)
+def grouping_image(group_id):
+    # # Firestore への接続 -----------------
+    # KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    # cred = credentials.Certificate(KEY_PATH)
+    # firebase_admin.initialize_app(cred)
     db = firestore.client()
-    # -----------------------------------
+    # # -----------------------------------
 
     # 写真の読み出し -----------------------
     photos_firestore = db.collection("group").document(f"{group_id}").collection("photo").get()
@@ -77,9 +77,16 @@ def grouping_image(group_id="2"):
         for photo in groups[i]:
             url = photo["downloadUrl"]
             photo_id = photo_id_dict[f"{url}"]
+            db.collection("group").document(f"{group_id}").collection("grouping_photo").document(f"{i}").set({ "id": i })
             db.collection("group").document(f"{group_id}").collection("grouping_photo").document(f"{i}").collection(f"{i}").document(f"{photo_id}").set(photo)
     # ------------------------------------
 
 if __name__ == '__main__':
+    # Firestore への接続 -----------------
+    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    cred = credentials.Certificate(KEY_PATH)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    # -----------------------------------
     main()
     # main(group_id)

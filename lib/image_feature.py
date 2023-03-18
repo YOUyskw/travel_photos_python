@@ -75,13 +75,13 @@ def wrap_images(images, similarity_th=0.9):
                 wrapped_urls.add(images_sorted[i]["downloadUrl"])
     return wrapped_images, wrapped_urls
 
-def main(group_id="2"):
-    # Firestore への接続 -----------------
-    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
-    cred = credentials.Certificate(KEY_PATH)
-    firebase_admin.initialize_app(cred)
+def main(group_id):
+    # # Firestore への接続 -----------------
+    # KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    # cred = credentials.Certificate(KEY_PATH)
+    # firebase_admin.initialize_app(cred)
     db = firestore.client()
-    # -----------------------------------
+    # # -----------------------------------
 
     # 写真の読み出し -----------------------
     photos_firestore = db.collection("group").document(f"{group_id}").collection("photo").get()
@@ -124,6 +124,11 @@ def main(group_id="2"):
 
 
 if __name__ == "__main__":
+    # Firestore への接続 -----------------
+    KEY_PATH = '.env/trip-timeline-28131-firebase-adminsdk-u4wq6-6d1ede5eda.json'
+    cred = credentials.Certificate(KEY_PATH)
+    firebase_admin.initialize_app(cred)
+    # -----------------------------------
     main()
 
 
